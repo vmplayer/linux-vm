@@ -1,0 +1,49 @@
+#cloud-config
+hostname: linux-vm
+manage_etc_hosts: true
+ssh_pwauth: true
+users:
+  - name: vmuser
+    gecos: VM User
+    groups: [adm, sudo]
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    lock_passwd: false
+    plain_text_passwd: vmuser
+chpasswd:
+  expire: false
+  list:
+    - vmuser:vmuser
+package_update: true
+packages:
+  - xserver-xorg
+  - dbus-x11
+  - xfce4
+  - xfce4-goodies
+  - lightdm
+  - curl
+  - bzip2
+  - openssh-server
+write_files:
+  - path: /etc/lightdm/lightdm.conf.d/10-autologin.conf
+    permissions: '0644'
+    content: |
+      [Seat:*]
+      autologin-user=vmuser
+      autologin-user-timeout=0
+      user-session=xfce
+  - path: /usr/local/sbin/install-firefox
+    permissions: '0755'
+    content: |
+      #!/bin/sh
+      set -eu
+      curl -fL 'https://download.mozilla.org/?product=firefox-latest-ssl&os=linux64&lang=en-US' -o /tmp/firefox.tar.xz
+      rm -rf /opt/firefox
+      tar -xJf /tmp/firefox.tar.xz -C /opt
+      ln -sfn /opt/firefox/firefox /usr/local/bin/firefox
+      rm -f /tmp/firefox.tar.xz
+runcmd:
+  - systemctl enable lightdm
+  - systemctl set-default graphical.target
+  - /usr/local/sbin/install-firefox
+  - systemctl restart lightdm
